@@ -38,6 +38,7 @@ import org.babetech.borastock.data.models.StockItem
 import org.babetech.borastock.data.models.StockStatistics
 import org.babetech.borastock.ui.screens.screennavigation.AccueilUiState
 import org.babetech.borastock.ui.screens.screennavigation.AccueilViewModel
+import org.babetech.borastock.ui.screens.dashboard.CompactStockChart
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -89,7 +90,8 @@ fun AccueilScreen(viewModel: AccueilViewModel = koinViewModel()) {
                                     scope.launch {
                                         navigator.navigateTo(SupportingPaneScaffoldRole.Supporting)
                                     }
-                                }
+                                },
+                                onNavigateToDetailedCharts = { /* TODO: Navigate to GraphiquesDetailsScreen */ }
                             )
                         }
                     }
@@ -121,6 +123,7 @@ fun ThreePaneScaffoldScope.MainDashboardPane(
     criticalStockItems: List<StockItem>,
     showChartButton: Boolean,
     onToggleChart: () -> Unit,
+    onNavigateToDetailedCharts: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -168,6 +171,28 @@ fun ThreePaneScaffoldScope.MainDashboardPane(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             item { DashboardMetricsGrid(statistics) }
+            item { 
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Aperçu des tendances",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                        TextButton(onClick = onNavigateToDetailedCharts) {
+                            Text("Voir plus")
+                        }
+                    }
+                    CompactStockChart()
+                }
+            }
             item { RecentMovementsList(recentMovements) }
             if (criticalStockItems.isNotEmpty()) {
                 item { CriticalStockSection(criticalStockItems) }
@@ -182,7 +207,7 @@ fun ThreePaneScaffoldScope.MainDashboardPane(
                             .height(48.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
                         )
                     ) {
                         Row(
@@ -195,7 +220,7 @@ fun ThreePaneScaffoldScope.MainDashboardPane(
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
-                                "Afficher l'analyse",
+                                "Analyse avancée",
                                 style = MaterialTheme.typography.labelLarge.copy(
                                     fontWeight = FontWeight.Medium
                                 )

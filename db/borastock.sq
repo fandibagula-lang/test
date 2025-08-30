@@ -282,6 +282,50 @@ LIMIT ?;
 lastInsertRowId:
 SELECT last_insert_rowid();
 selectRecentEntriesWithItemName:
+-- Requêtes pour les graphiques et analytics
+selectStockEvolutionData:
+SELECT 
+  DATE(se.entry_date) as date,
+  SUM(se.total_value) as total_value
+FROM stock_entries se
+WHERE se.status IN ('VALIDATED', 'RECEIVED')
+  AND DATE(se.entry_date) >= DATE('now', '-30 days')
+GROUP BY DATE(se.entry_date)
+ORDER BY date ASC;
+
+selectCategoryDistribution:
+SELECT 
+  si.category,
+  SUM(cs.current_stock * si.unit_price) as total_value,
+  COUNT(*) as item_count
+FROM current_stock cs
+JOIN stock_items si ON cs.id = si.id
+WHERE cs.status = 'ACTIVE'
+GROUP BY si.category
+ORDER BY total_value DESC;
+
+selectLowStockItems:
+SELECT 
+  cs.name,
+  cs.current_stock,
+  cs.min_stock,
+  cs.category
+FROM current_stock cs
+WHERE cs.current_stock <= cs.min_stock
+  AND cs.status = 'ACTIVE'
+ORDER BY (cs.current_stock - cs.min_stock) ASC
+LIMIT 10;
+
+selectMonthlyRevenue:
+SELECT 
+  strftime('%Y-%m', sx.exit_date) as month,
+  SUM(sx.total_value) as revenue
+FROM stock_exits sx
+WHERE sx.status IN ('DELIVERED')
+  AND DATE(sx.exit_date) >= DATE('now', '-12 months')
+GROUP BY strftime('%Y-%m', sx.exit_date)
+ORDER BY month ASC;
+
 SELECT e.*, i.name AS itemName
 FROM stock_entries e
 JOIN stock_items i ON i.id = e.stock_item_id

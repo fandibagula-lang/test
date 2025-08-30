@@ -13,6 +13,7 @@ import org.babetech.borastock.data.db.provideDriver
 import org.babetech.borastock.data.dispatchers.IODispatcher
 import org.babetech.borastock.data.mappers.*
 import org.babetech.borastock.data.models.*
+import org.babetech.borastock.domain.usecase.*
 
 interface StockRepository {
     // Stock Items
@@ -54,6 +55,12 @@ interface StockRepository {
     // Statistics
     suspend fun getStockStatistics(): StockStatistics
     suspend fun getRecentMovements(limit: Int = 5): List<RecentMovement>
+    
+    // Chart data
+    suspend fun getStockEvolutionData(): List<ChartDataPoint>
+    suspend fun getCategoryDistributionData(): List<PieChartDataPoint>
+    suspend fun getLowStockItemsData(): List<BarChartDataPoint>
+    suspend fun getMonthlyRevenueData(): List<ChartDataPoint>
 }
 
 /**
@@ -290,5 +297,60 @@ class StockRepositoryImpl(
         val recentEntries = queries.selectRecentEntries(limit.toLong()).executeAsList().map { it.toRecentMovement() }
         val recentExits = queries.selectRecentExits(limit.toLong()).executeAsList().map { it.toRecentMovement() }
         (recentEntries + recentExits).sortedByDescending { it.date }.take(limit)
+    }
+    
+    // ---------------- CHART DATA ----------------
+    override suspend fun getStockEvolutionData(): List<ChartDataPoint> = withContext(dispatcher) {
+        queries.selectStockEvolutionData().executeAsList().map { row ->
+            ChartDataPoint(
+                label = row.date ?: "",
+                value = row.total_value ?: 0.0
+            )
+        }
+    }
+    
+    override suspend fun getCategoryDistributionData(): List<PieChartDataPoint> = withContext(dispatcher) {
+        queries.selectCategoryDistribution().executeAsList().map { row ->
+            PieChartDataPoint(
+                label = row.category,
+                value = row.total_value ?: 0.0,
+                color = getCategoryColor(row.category)
+            )
+        }
+    }
+    
+    override suspend fun getLowStockItemsData(): List<BarChartDataPoint> = withContext(dispatcher) {
+        queries.selectLowStockItems().executeAsList().map { row ->
+            BarChartDataPoint(
+                label = row.name.take(10) + if (row.name.length > 10) "..." else "",
+                value = row.current_stock?.toDouble() ?: 0.0,
+                minValue = row.min_stock.toDouble(),
+                color = if (row.current_stock == 0L) {
+                    androidx.compose.ui.graphics.Color(0xFFEF4444)
+                } else {
+                    androidx.compose.ui.graphics.Color(0xFFF59E0B)
+                }
+            )
+        }
+    }
+    
+    override suspend fun getMonthlyRevenueData(): List<ChartDataPoint> = withContext(dispatcher) {
+        queries.selectMonthlyRevenue().executeAsList().map { row ->
+            ChartDataPoint(
+                label = row.month ?: "",
+                value = row.revenue ?: 0.0
+            )
+        }
+    }
+    
+    private fun getCategoryColor(category: String): androidx.compose.ui.graphics.Color {
+        return when (category.lowercase()) {
+            "électronique" -> androidx.compose.ui.graphics.Color(0xFF3B82F6)
+            "informatique" -> androidx.compose.ui.graphics.Color(0xFF8B5CF6)
+            "accessoires" -> androidx.compose.ui.graphics.Color(0xFF10B981)
+            "mobilier" -> androidx.compose.ui.graphics.Color(0xFFF59E0B)
+            "vêtements" -> androidx.compose.ui.graphics.Color(0xFFEF4444)
+            else -> androidx.compose.ui.graphics.Color(0xFF6B7280)
+        }
     }
 }
